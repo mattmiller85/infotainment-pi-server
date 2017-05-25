@@ -1,0 +1,25 @@
+{
+  "name": "infotainment-pi-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for infotainment-pi",
+  "main": "/app/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha -r ts-node/register src/**/*tests.ts"
+  },
+  "author": "Matt Miller",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^3.5.2",
+    "@types/mocha": "^2.2.41",
+    "@types/ws": "0.0.41",
+    "chai": "^3.5.0",
+    "mocha": "^3.4.2",
+    "ts-node": "^3.0.4",
+    "typescript": "^2.3.3"
+  },
+  "dependencies": {
+    "rxjs": "^5.4.0",
+    "ws": "^3.0.0"
+  }
+}
