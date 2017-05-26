@@ -3,8 +3,5 @@ import { WebSocket } from "ws";
 
 export class MessageWithSender
 {
-    constructor(message: MessageBase, who: WebSocket){}
-
-    message: MessageBase;
-    who: WebSocket;
+    constructor(public message: MessageBase, public who: WebSocket){}
 }

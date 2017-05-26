@@ -8,10 +8,10 @@
         "moduleResolution": "node",
         "sourceMap": true,
         "allowJs": true,
-        "outDir": "app",
-        "rootDir": "src"
+        "outDir": "app"
     },
     "include": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "typings/ws/index.d.ts"
     ]
 }

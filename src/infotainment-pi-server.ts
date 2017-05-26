@@ -1,5 +1,5 @@
 import { MessageWithSender } from './message-with-sender';
-import { Server, WebSocket } from "@types/ws";
+import { Server, WebSocket } from "ws";
 import { GreetingMessage, MessageBase, MessageType, MessageReader } from "../../infotainment-pi-core/core";
 import { Subject } from "rxjs/Rx";
 
@@ -7,9 +7,10 @@ export class InfotainmentPiServer {
     constructor(private server: Server, private messageReader: MessageReader) {
         server.on("error", (err) => { console.log(err); });
         server.on("connection", (ws) => {
-            
+            console.log("blah");
             ws.send(JSON.stringify(new GreetingMessage()));
             ws.on("message", (msg) => {
+                console.log("message");
                 this.message.next(new MessageWithSender(messageReader.getMessage(msg), ws));
             });
 
