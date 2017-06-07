@@ -13,7 +13,6 @@ export class InfotainmentPiServer {
                 console.log("message");
                 this.message.next(new MessageWithSender(messageReader.getMessage(msg), ws));
             });
-
         });
     }
 
