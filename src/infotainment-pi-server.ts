@@ -5,7 +5,8 @@ import { Server, WebSocket } from "ws";
 import {
     GreetingMessage, MessageBase, MessageType, MessageReader,
     ReturnAllTilesMessage, GetTileByIdMessage, ReturnTileMessage,
-    PlayAudioFileMessage, SongStatusMessage, SingleAudioFileTile
+    PlayAudioFileMessage, SongStatusMessage, SingleAudioFileTile,
+    DigitalOBDIISensorTile
 } from "../../infotainment-pi-core/core";
 import { Observable, Subject, Subscription } from 'rxjs/Rx';
 

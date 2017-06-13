@@ -1,9 +1,9 @@
 //import { Player } from "player";
 
 export class InfotainmentPiAudioManager{
-    
+        
     constructor() {
-
+        
     }
 
     playFile(filePath: string): Promise<boolean> {
