@@ -1,8 +1,7 @@
+/// <reference path="./typings/obd2/obd2.d.ts" />
+import { obd } from './typings/obd2/obd2';
 
 import { BehaviorSubject, Subject } from 'rxjs/Rx';
-//import { Player } from "player";
-import obd = require("obd2/index");
-
 export class InfotainmentPiOBDIIDataRepository{
     private _obd: obd;
     private _obdStarted: BehaviorSubject<boolean> = new BehaviorSubject(false);
@@ -11,6 +10,7 @@ export class InfotainmentPiOBDIIDataRepository{
     pidList: Subject<Array<string>> = new Subject();
 
     constructor() {
+        
         try{
             this._obd = new obd({
                 device  : "ELM327", // Device type
