@@ -5,7 +5,8 @@
   "main": "/app/index.js",
   "scripts": {
     "build": "tsc",
-    "test": "mocha -r ts-node/register src/**/*tests.ts"
+    "test": "mocha -r ts-node/register src/**/*tests.ts",
+    "run": "tsc && node app/infotainment-pi-server/src/index.js"
   },
   "author": "Matt Miller",
   "license": "ISC",

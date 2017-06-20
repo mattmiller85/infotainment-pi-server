@@ -8,10 +8,14 @@
         "moduleResolution": "node",
         "sourceMap": true,
         "allowJs": true,
-        "outDir": "app"
+        "outDir": "app",
+        "typeRoots": [
+            "src/typings"
+        ]
     },
     "include": [
         "src/**/*.ts",
+        "src/typings/**/*.d.ts",
         "typings/ws/index.d.ts"
     ]
 }

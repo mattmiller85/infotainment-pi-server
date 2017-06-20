@@ -1,11 +1,13 @@
-/// <reference path="./typings/obd2/obd2.d.ts" />
-import { obd } from './typings/obd2/obd2';
+import obd = require('obd2');
 
-import { BehaviorSubject, Subject } from 'rxjs/Rx';
+import { BehaviorSubject, Observable, Subject } from 'rxjs/Rx';
+
 export class InfotainmentPiOBDIIDataRepository{
     private _obd: obd;
     private _obdStarted: BehaviorSubject<boolean> = new BehaviorSubject(false);
     private _obdFailed: BehaviorSubject<any> = new BehaviorSubject(false);
+    
+    reading: Subject<{ sensor_number: number, value: number }> = new Subject();
 
     pidList: Subject<Array<string>> = new Subject();
 
@@ -30,9 +32,7 @@ export class InfotainmentPiOBDIIDataRepository{
     }
 
     getCodeList(){
-        this._obd.listPID((list) => {
-            this.pidList.next(list);
-        });
+        this.pidList.next(this._obd.PID.getListPID());
     }
 
     startReading(sensor_number: number): void {
@@ -40,9 +40,14 @@ export class InfotainmentPiOBDIIDataRepository{
             return null;
         
         //this._obd.listDTC();
+        //faker
+        Observable.interval(1000).subscribe(i => {
+            this.reading.next({ sensor_number: 3, value: 29 });
+        });
 
         this._obd.on("dataParsed", ( type, elem, data ) =>
         {
+            this.reading.next(data);
             //io.emit('obd2', type, elem, data );
         });
 

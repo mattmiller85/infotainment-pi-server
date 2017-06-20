@@ -12,6 +12,7 @@ export class InfotainmentPiRepository{
     addTile(tileId: number, tile: TileBase): Promise<boolean> {
         return new Promise((resolve, reject) => {
             try{
+                tile.id = tileId;
                 this._client.set(`tile:${tileId}`, JSON.stringify(tile), (err: any, id: any) => { resolve(true) })
             }catch(ex){
                 reject(ex);

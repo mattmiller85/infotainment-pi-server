@@ -1,66 +1,107 @@
+import {
+    AddUpdateTileMessage,
+    DigitalOBDIISensorTile,
+    GetTileByIdMessage,
+    GreetingMessage,
+    MessageBase,
+    MessageReader,
+    MessageType,
+    OBDReadingMessage,
+    PlayAudioFileMessage,
+    ReturnAllTilesMessage,
+    ReturnTileMessage,
+    SingleAudioFileTile,
+    SongStatusMessage,
+    TileType,
+    TileUpdatedMessage
+} from '../../infotainment-pi-core/core';
 import { InfotainmentPiAudioManager } from './infotainment-pi-audio-manager';
+import { InfotainmentPiOBDIIDataRepository } from './infotainment-pi-obdII-data-repository';
 import { InfotainmentPiRepository } from './infotainment-pi-repository';
 import { MessageWithSender } from './message-with-sender';
-import { Server, WebSocket } from "ws";
-import {
-    GreetingMessage, MessageBase, MessageType, MessageReader,
-    ReturnAllTilesMessage, GetTileByIdMessage, ReturnTileMessage,
-    PlayAudioFileMessage, SongStatusMessage, SingleAudioFileTile,
-    DigitalOBDIISensorTile
-} from "../../infotainment-pi-core/core";
 import { Observable, Subject, Subscription } from 'rxjs/Rx';
+import { Server, WebSocket } from 'ws';
 
 export class InfotainmentPiServer {
 
     private currentSongSub: Subscription;
     private currentSongTilePlaying: SingleAudioFileTile;
 
-    constructor(private server: Server, private messageReader: MessageReader, private repo: InfotainmentPiRepository, private audioManager: InfotainmentPiAudioManager) {
+    constructor(private server: Server, private messageReader: MessageReader, private repo: InfotainmentPiRepository, private audioManager: InfotainmentPiAudioManager, private obd2Repo: InfotainmentPiOBDIIDataRepository) {
 
         server.on("error", console.log);
 
-        server.on("connection", (ws) => {
-            ws.send(JSON.stringify(new GreetingMessage()));
-            ws.on("message", (msg) => {
-                var theMessage = messageReader.getMessage(msg);
-                console.log(`Received a ${theMessage.type} message.`);
-                this.message.next(new MessageWithSender(theMessage, ws));
+        repo.getTiles().then((allTiles) => {
+            
+            let hasOBDTile = false; 
+            allTiles.filter(t => t.type == TileType.digital_obd_ii_sensor).forEach(t => {
+                hasOBDTile = true;
+                let obdTile = t as DigitalOBDIISensorTile;
+                this.obd2Repo.startReading(obdTile.sensor_number);
             });
-        });
 
-        this.message.subscribe(msg => {
-            if (msg.message.type == MessageType.askForAllTiles) {
-                repo.getTiles().then((tiles) => {
-                    this.sendMessage(new ReturnAllTilesMessage(tiles), msg.who);
-                });
-            }
-            if (msg.message.type == MessageType.getTileById) {
-                repo.getTiles().then((tiles) => {
-                    var tileByIdMessage = msg.message as GetTileByIdMessage;
-                    //TODO - Add get tile by id thing to repository
-                    this.sendMessage(new ReturnTileMessage(tiles.filter((tile) => tile.id == tileByIdMessage.id)[0]), msg.who);
-                });
-            }
-            if (msg.message.type == MessageType.playAudioFile) {
-                var playMessage = msg.message as PlayAudioFileMessage;
-                if(this.currentSongSub != null){
-                    this.currentSongTilePlaying = null;                    
-                    this.currentSongSub.unsubscribe();//a new song is playing, stop giving updates for the old one
-                }
-                audioManager.playFile(playMessage.tile.path_to_audio).then(() => {
-                    this.currentSongTilePlaying = playMessage.tile as SingleAudioFileTile;
-                    this.currentSongSub = Observable.timer(0, 1000).subscribe((x) => this.broadcastMessage(new SongStatusMessage(playMessage.tile as SingleAudioFileTile, x)));
+            if(hasOBDTile){
+                this.obd2Repo.reading.subscribe(reading => {
+                    let tile = allTiles.filter(t => t.type == TileType.digital_obd_ii_sensor).find(t => (t as DigitalOBDIISensorTile).sensor_number == reading.sensor_number) as DigitalOBDIISensorTile;
+                    this.broadcastMessage(new OBDReadingMessage(tile, reading.value));
                 });
             }
 
-            if (msg.message.type == MessageType.stopAudioFile) {
-                if(this.currentSongSub != null){
-                    this.currentSongSub.unsubscribe();//song stopped playing, stop giving updates for the old one
-                }
-                audioManager.stopPlaying().then(() => {
-                    this.broadcastMessage(new SongStatusMessage(this.currentSongTilePlaying, -1));
+            server.on("connection", (ws) => {
+                ws.send(JSON.stringify(new GreetingMessage()));
+                console.log(`Received a connection from ${ws}.`);
+                ws.on("message", (msg) => {
+                    var theMessage = messageReader.getMessage(msg);
+                    console.log(`Received a ${MessageType[theMessage.type]} message: ${JSON.stringify(theMessage)}.`);
+                    this.message.next(new MessageWithSender(theMessage, ws));
                 });
-            }
+            });
+
+            this.message.subscribe(msg => {
+                switch(msg.message.type){
+                    case MessageType.askForAllTiles:
+                        this.sendMessage(new ReturnAllTilesMessage(allTiles), msg.who);
+                        break;
+                    case MessageType.getTileById:
+                        var tileByIdMessage = msg.message as GetTileByIdMessage;
+                        this.sendMessage(new ReturnTileMessage(allTiles.filter((tile) => tile.id == tileByIdMessage.id)[0]), msg.who);
+                        break;
+                    case MessageType.playAudioFile:
+                        let playMessage = msg.message as PlayAudioFileMessage;
+                        if(this.currentSongSub != null){
+                            this.currentSongTilePlaying = null;                    
+                            this.currentSongSub.unsubscribe();//a new song is playing, stop giving updates for the old one
+                        }
+                        audioManager.playFile(playMessage.tile.path_to_audio).then(() => {
+                            this.currentSongTilePlaying = playMessage.tile as SingleAudioFileTile;
+                            this.currentSongSub = Observable.timer(0, 1000).subscribe(x => this.broadcastMessage(new SongStatusMessage(playMessage.tile as SingleAudioFileTile, x)));
+                        });
+                        break;
+                    case MessageType.stopAudioFile:
+                        if(this.currentSongSub != null){
+                            this.currentSongSub.unsubscribe();//song stopped playing, stop giving updates for the old one
+                        }
+                        audioManager.stopPlaying().then(() => {
+                            this.broadcastMessage(new SongStatusMessage(this.currentSongTilePlaying, -1));
+                        });
+                        break;
+                    case MessageType.addUpdateTile:
+                        let addUpdate = msg.message as AddUpdateTileMessage;
+                        if(addUpdate.tile.id > 0){
+                            repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) => this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "updated")));
+                        }
+                        else{
+                            repo.getNextId().then((next_id) => {
+                                addUpdate.tile.id = next_id;
+                                repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) => this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "added")));
+                            }).catch((reason) => {
+                                console.log(reason);
+                            });
+                        }
+                        
+                        break;
+                }
+            });
         });
     }
 

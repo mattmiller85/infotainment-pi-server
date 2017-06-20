@@ -5,15 +5,15 @@ import { InfotainmentPiServer } from './infotainment-pi-server';
 import { Server } from "ws";
 import { MessageReader, TileType, MessageType, GetTileByIdMessage, ReturnAllTilesMessage, ReturnTileMessage, SingleAudioFileTile, DigitalOBDIISensorTile } from "../../infotainment-pi-core/core";
 
-//let server = new InfotainmentPiServer(new Server({ port: 12345 }), new MessageReader(), new InfotainmentPiRepository(), new InfotainmentPiAudioManager());
-//console.log("Listening on port 12345...");
+let server = new InfotainmentPiServer(new Server({ port: 12345 }), new MessageReader(), new InfotainmentPiRepository(), new InfotainmentPiAudioManager(), new InfotainmentPiOBDIIDataRepository());
+console.log("Listening on port 12345...");
 
-let obdRepo = new InfotainmentPiOBDIIDataRepository();
+// let obdRepo = new InfotainmentPiOBDIIDataRepository();
 
-obdRepo.pidList.subscribe(lst => {
-    console.log(lst);
-});
-obdRepo.getCodeList();
+// obdRepo.pidList.subscribe(lst => {
+//     console.log(lst);
+// });
+// obdRepo.getCodeList();
 
 //let repo = new InfotainmentPiRepository(); 
 // repo.getTiles().then((tiles) => { 
