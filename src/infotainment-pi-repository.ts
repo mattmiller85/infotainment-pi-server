@@ -1,12 +1,12 @@
-import { tryCatch } from 'rxjs/util/tryCatch';
 import * as redis from 'redis';
+import { tryCatch } from 'rxjs/util/tryCatch';
 import { TileBase } from "../../infotainment-pi-core/core"
 
 export class InfotainmentPiRepository{
     private _client: redis.RedisClient;
 
     constructor() {
-        this._client = redis.createClient(6379, "localhost");    
+        this._client = redis.createClient(6379, "localhost");
     }
 
     addTile(tileId: number, tile: TileBase): Promise<boolean> {
