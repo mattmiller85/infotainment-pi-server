@@ -2,8 +2,9 @@
   "name": "infotainment-pi-server",
   "version": "1.0.0",
   "description": "WebSocket server for infotainment-pi",
-  "main": "/app/index.js",
+  "main": "app/infotainment-pi-server/src/index.js",
   "scripts": {
+    "start": "node app/infotainment-pi-server/src/index.js",
     "build": "tsc",
     "test": "mocha -r ts-node/register src/**/*tests.ts",
     "run": "tsc && node app/infotainment-pi-server/src/index.js"

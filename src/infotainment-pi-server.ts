@@ -16,6 +16,7 @@ import {
     ReturnTileMessage,
     SingleAudioFileTile,
     SongStatusMessage,
+    TileBase,
     TileType,
     TileUpdatedMessage,
 } from '../../infotainment-pi-core/core';
@@ -38,25 +39,13 @@ export class InfotainmentPiServer {
 
         repo.getTiles().then((allTiles) => {
 
-            let hasOBDTile = false;
-            allTiles.filter((tile) => tile.type === TileType.digital_obd_ii_sensor).forEach((t) => {
-                hasOBDTile = true;
-                const obdTile = t as DigitalOBDIISensorTile;
-                this.obd2Repo.startReading(obdTile.sensor_number);
-            });
-
-            if (hasOBDTile) {
-                this.obd2Repo.reading.subscribe((reading) => {
-                    const tile = allTiles.filter((t) => t.type === TileType.digital_obd_ii_sensor).find((t) =>
-                        (t as DigitalOBDIISensorTile).sensor_number === reading.sensor_number) as DigitalOBDIISensorTile;
-                    this.broadcastMessage(new OBDReadingMessage(tile, reading.value));
-                });
-            }
+            this.initOBD2Tiles(allTiles);
 
             server.on("connection", (ws) => {
                 ws.send(JSON.stringify(new GreetingMessage()));
 
                 console.log(`Received a connection from ${ws}.`);
+
                 ws.on("message", (msg) => {
                     const theMessage = messageReader.getMessage(msg);
                     console.log(`Received a ${MessageType[theMessage.type]} message: ${JSON.stringify(theMessage)}.`);
@@ -65,51 +54,7 @@ export class InfotainmentPiServer {
             });
 
             this.message.subscribe((msg) => {
-                switch (msg.message.type) {
-                    case MessageType.askForAllTiles:
-                        this.sendMessage(new ReturnAllTilesMessage(allTiles), msg.who);
-                        break;
-                    case MessageType.getTileById:
-                        const tileByIdMessage = msg.message as GetTileByIdMessage;
-                        this.sendMessage(new ReturnTileMessage(allTiles.filter((tile) => tile.id === tileByIdMessage.id)[0]), msg.who);
-                        break;
-                    case MessageType.playAudioFile:
-                        const playMessage = msg.message as PlayAudioFileMessage;
-                        if (this.currentSongSub !== null) {
-                            this.currentSongTilePlaying = null;
-                            this.currentSongSub.unsubscribe(); // a new song is playing, stop giving updates for the old one
-                        }
-                        audioManager.playFile(playMessage.tile.path_to_audio).then(() => {
-                            this.currentSongTilePlaying = playMessage.tile as SingleAudioFileTile;
-                            this.currentSongSub = Observable.timer(0, 1000).subscribe((x) =>
-                                this.broadcastMessage(new SongStatusMessage(playMessage.tile as SingleAudioFileTile, x)));
-                        });
-                        break;
-                    case MessageType.stopAudioFile:
-                        if (this.currentSongSub !== null) {
-                            this.currentSongSub.unsubscribe(); // song stopped playing, stop giving updates for the old one
-                        }
-                        audioManager.stopPlaying().then(() => {
-                            this.broadcastMessage(new SongStatusMessage(this.currentSongTilePlaying, -1));
-                        });
-                        break;
-                    case MessageType.addUpdateTile:
-                        const addUpdate = msg.message as AddUpdateTileMessage;
-                        if (addUpdate.tile.id > 0) {
-                            repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) =>
-                                this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "updated")));
-                        } else {
-                            repo.getNextId().then((nextId) => {
-                                addUpdate.tile.id = nextId;
-                                repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) =>
-                                    this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "added")));
-                            }).catch((reason) => {
-                                console.log(reason);
-                            });
-                        }
-
-                        break;
-                }
+                this.handleMessage(msg, allTiles, audioManager, repo);
             });
         });
     }
@@ -120,5 +65,69 @@ export class InfotainmentPiServer {
 
     private broadcastMessage<T extends MessageBase>(message: T) {
         this.server.clients.forEach((c) => c.send(JSON.stringify(message)));
+    }
+
+    private initOBD2Tiles(allTiles: TileBase[]) {
+        let hasOBDTile = false;
+        allTiles.filter((tile) => tile.type === TileType.digital_obd_ii_sensor).forEach((t) => {
+            hasOBDTile = true;
+            const obdTile = t as DigitalOBDIISensorTile;
+            this.obd2Repo.startReading(obdTile.sensor_number);
+        });
+        if (hasOBDTile) {
+            this.obd2Repo.reading.subscribe((reading) => {
+                const tile = allTiles.filter((t) => t.type === TileType.digital_obd_ii_sensor).find((t) =>
+                    (t as DigitalOBDIISensorTile).sensor_number === reading.sensor_number) as DigitalOBDIISensorTile;
+                this.broadcastMessage(new OBDReadingMessage(tile, reading.value));
+            });
+        }
+    }
+
+    private handleMessage(msg: MessageWithSender, allTiles: TileBase[],
+                          audioManager: InfotainmentPiAudioManager, repo: InfotainmentPiRepository) {
+        switch (msg.message.type) {
+            case MessageType.askForAllTiles:
+                this.sendMessage(new ReturnAllTilesMessage(allTiles), msg.who);
+                break;
+            case MessageType.getTileById:
+                const tileByIdMessage = msg.message as GetTileByIdMessage;
+                this.sendMessage(new ReturnTileMessage(allTiles.filter((tile) => tile.id === tileByIdMessage.id)[0]), msg.who);
+                break;
+            case MessageType.playAudioFile:
+                const playMessage = msg.message as PlayAudioFileMessage;
+                if (this.currentSongSub !== null) {
+                    this.currentSongTilePlaying = null;
+                    this.currentSongSub.unsubscribe(); // a new song is playing, stop giving updates for the old one
+                }
+                audioManager.playFile(playMessage.tile.path_to_audio).then(() => {
+                    this.currentSongTilePlaying = playMessage.tile as SingleAudioFileTile;
+                    this.currentSongSub = Observable.timer(0, 1000).subscribe((x) =>
+                        this.broadcastMessage(new SongStatusMessage(playMessage.tile as SingleAudioFileTile, x)));
+                });
+                break;
+            case MessageType.stopAudioFile:
+                if (this.currentSongSub !== null) {
+                    this.currentSongSub.unsubscribe(); // song stopped playing, stop giving updates for the old one
+                }
+                audioManager.stopPlaying().then(() => {
+                    this.broadcastMessage(new SongStatusMessage(this.currentSongTilePlaying, -1));
+                });
+                break;
+            case MessageType.addUpdateTile:
+                const addUpdate = msg.message as AddUpdateTileMessage;
+                if (addUpdate.tile.id > 0) {
+                    repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) =>
+                        this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "updated")));
+                } else {
+                    repo.getNextId().then((nextId) => {
+                        addUpdate.tile.id = nextId;
+                        repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) =>
+                            this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "added")));
+                    }).catch((reason) => {
+                        console.log(reason);
+                    });
+                }
+                break;
+        }
     }
 }

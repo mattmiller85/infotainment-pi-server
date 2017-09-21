@@ -20,7 +20,9 @@
         "no-consecutive-blank-lines": false,
 		"quotemark": [
 			"double"
-		]
+		],
+		"no-console": false,
+		"no-submodule-imports": false
 		
 	}
 }

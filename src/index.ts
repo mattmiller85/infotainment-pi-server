@@ -1,11 +1,17 @@
-import { InfotainmentPiOBDIIDataRepository } from './infotainment-pi-obdII-data-repository';
+import { Server } from 'ws';
+
+import { MessageReader } from '../../infotainment-pi-core/core';
 import { InfotainmentPiAudioManager } from './infotainment-pi-audio-manager';
+import { InfotainmentPiOBDIIDataRepository } from './infotainment-pi-obdII-data-repository';
 import { InfotainmentPiRepository } from './infotainment-pi-repository';
 import { InfotainmentPiServer } from './infotainment-pi-server';
-import { Server } from "ws";
-import { MessageReader, TileType, MessageType, GetTileByIdMessage, ReturnAllTilesMessage, ReturnTileMessage, SingleAudioFileTile, DigitalOBDIISensorTile } from "../../infotainment-pi-core/core";
 
-let server = new InfotainmentPiServer(new Server({ port: 12345 }), new MessageReader(), new InfotainmentPiRepository(), new InfotainmentPiAudioManager(), new InfotainmentPiOBDIIDataRepository());
+const server = new InfotainmentPiServer(new Server({ port: 12345 }),
+    new MessageReader(),
+    new InfotainmentPiRepository(),
+    new InfotainmentPiAudioManager(),
+    new InfotainmentPiOBDIIDataRepository());
+
 console.log("Listening on port 12345...");
 
 // let obdRepo = new InfotainmentPiOBDIIDataRepository();
@@ -15,8 +21,8 @@ console.log("Listening on port 12345...");
 // });
 // obdRepo.getCodeList();
 
-//let repo = new InfotainmentPiRepository(); 
-// repo.getTiles().then((tiles) => { 
+// let repo = new InfotainmentPiRepository();
+// repo.getTiles().then((tiles) => {
 //     tiles.forEach(t => {
 //         if(t.type == TileType.single_audio_file){
 //             (t as SingleAudioFileTile).duration_seconds = 120;
@@ -27,7 +33,7 @@ console.log("Listening on port 12345...");
 //     console.log(reason);
 // });
 
-//  repo.getNextId().then((next_id) => { 
+//  repo.getNextId().then((next_id) => {
 //      console.log(next_id);
 //      let newTile = new DigitalOBDIISensorTile();
 //      newTile.id = next_id;

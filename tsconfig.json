@@ -9,6 +9,10 @@
         "sourceMap": true,
         "allowJs": true,
         "outDir": "app",
+        "rootDirs": [
+            "src",
+            "../infotainment-pi-core/src"
+        ],
         "typeRoots": [
             "src/typings"
         ]
