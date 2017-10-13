@@ -10,7 +10,7 @@
             "name": "Launch Program",
             "program": "${workspaceRoot}\\app\\infotainment-pi-server\\src\\index.js",
             "cwd": "${workspaceRoot}",
-            "outFiles": [],
+            "outFiles": ["${workspaceRoot}\\app\\**"],
             "sourceMaps": true
         },
         {

@@ -7,15 +7,15 @@ export class InfotainmentPiRepository {
     private client: redis.RedisClient;
 
     constructor() {
-        this.client = redis.createClient(Config.RedisPort, Config.RedisHost);
+        this.client = redis.createClient(Config.RedisPort, Config.RedisHost, { db: Config.RedisDb });
     }
 
-    public addTile(tileId: number, tile: TileBase): Promise<boolean> {
+    public setTile(tileId: number, tile: TileBase): Promise<boolean> {
         return new Promise((resolve, reject) => {
             try {
                 tile.id = tileId;
                 this.client.set(`tile:${tileId}`, JSON.stringify(tile), (err: any, id: any) => { resolve(true) })
-            }catch (ex) {
+            } catch (ex) {
                 reject(ex);
             }
         });
@@ -35,6 +35,10 @@ export class InfotainmentPiRepository {
         return new Promise<TileBase[]>((resolve, reject) => {
             try {
                 this.client.keys("tile:*", (err: any, keys: any) => {
+                    if (!keys || keys.length === 0) {
+                        resolve([]);
+                        return;
+                    }
                     this.client.mget(keys, (e: any, tiles: any) => {
                         for (let i = 0; i < keys.length; i++) {
                             tiles[i] = JSON.parse(tiles[i]);

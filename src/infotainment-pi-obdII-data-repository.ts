@@ -36,9 +36,9 @@ export class InfotainmentPiOBDIIDataRepository {
     }
 
     public startReading(sensorNumber: number): void {
-        if (!this.obdStarted.getValue()) {
-            return null;
-        }
+        // if (!this.obdStarted.getValue()) {
+        //     return null;
+        // }
 
         // this._obd.listDTC();
         // faker
@@ -46,18 +46,18 @@ export class InfotainmentPiOBDIIDataRepository {
             this.reading.next({ sensor_number: 3, value: 29 });
         });
 
-        this.obd.on("dataParsed", (type, elem, data) => {
-            this.reading.next(data);
-            // io.emit('obd2', type, elem, data );
-        });
+        // this.obd.on("dataParsed", (type, elem, data) => {
+        //     this.reading.next(data);
+        //     // io.emit('obd2', type, elem, data );
+        // });
 
-        this.obd.on("pid", (data) => {
-            // io.emit('pid', data );
-        });
+        // this.obd.on("pid", (data) => {
+        //     // io.emit('pid', data );
+        // });
 
-        this.obd.on("dtc", (data) => {
-            // io.emit('dtcList', data );
-        });
+        // this.obd.on("dtc", (data) => {
+        //     // io.emit('dtcList', data );
+        // });
 
     /* Extra usage code
         OBD.listPID(( pidList ) =>

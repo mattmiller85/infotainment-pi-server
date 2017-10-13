@@ -1,7 +1,9 @@
 // tslint:disable:no-console
 
 import { Observable, Subject, Subscription } from 'rxjs/Rx';
-import { Server, WebSocket } from 'ws';
+import { Server } from 'ws';
+// tslint:disable-next-line:no-duplicate-imports
+import * as WebSocket from 'ws';
 import {
     AddUpdateTileMessage,
     DigitalOBDIISensorTile,
@@ -32,8 +34,8 @@ export class InfotainmentPiServer {
     private message: Subject<MessageWithSender> = new Subject<MessageWithSender>();
 
     constructor(private server: Server, private messageReader: MessageReader,
-                private repo: InfotainmentPiRepository, private audioManager: InfotainmentPiAudioManager,
-                private obd2Repo: InfotainmentPiOBDIIDataRepository) {
+        private repo: InfotainmentPiRepository, private audioManager: InfotainmentPiAudioManager,
+        private obd2Repo: InfotainmentPiOBDIIDataRepository) {
 
         server.on("error", console.log);
 
@@ -44,17 +46,20 @@ export class InfotainmentPiServer {
             server.on("connection", (ws) => {
                 ws.send(JSON.stringify(new GreetingMessage()));
 
-                console.log(`Received a connection from ${ws}.`);
-
                 ws.on("message", (msg) => {
                     const theMessage = messageReader.getMessage(msg);
-                    console.log(`Received a ${MessageType[theMessage.type]} message: ${JSON.stringify(theMessage)}.`);
+                    console.log(`Received a ${MessageType[theMessage.type]} message from ` +
+                        `${JSON.stringify((ws as any)._sender._socket.address())}: ${JSON.stringify(theMessage)}.`);
                     this.message.next(new MessageWithSender(theMessage, ws));
                 });
             });
 
             this.message.subscribe((msg) => {
-                this.handleMessage(msg, allTiles, audioManager, repo);
+                repo.getTiles().then((tiles) => {
+                    allTiles = tiles;
+                    this.handleMessage(msg, allTiles, audioManager, repo);
+                });
+
             });
         });
     }
@@ -73,18 +78,19 @@ export class InfotainmentPiServer {
             hasOBDTile = true;
             const obdTile = t as DigitalOBDIISensorTile;
             this.obd2Repo.startReading(obdTile.sensor_number);
+            console.log(`started reading sensor ${obdTile.sensor_number}`);
         });
         if (hasOBDTile) {
             this.obd2Repo.reading.subscribe((reading) => {
                 const tile = allTiles.filter((t) => t.type === TileType.digital_obd_ii_sensor).find((t) =>
-                    (t as DigitalOBDIISensorTile).sensor_number === reading.sensor_number) as DigitalOBDIISensorTile;
+                    Number((t as DigitalOBDIISensorTile).sensor_number) === reading.sensor_number) as DigitalOBDIISensorTile;
                 this.broadcastMessage(new OBDReadingMessage(tile, reading.value));
             });
         }
     }
 
     private handleMessage(msg: MessageWithSender, allTiles: TileBase[],
-                          audioManager: InfotainmentPiAudioManager, repo: InfotainmentPiRepository) {
+        audioManager: InfotainmentPiAudioManager, repo: InfotainmentPiRepository) {
         switch (msg.message.type) {
             case MessageType.askForAllTiles:
                 this.sendMessage(new ReturnAllTilesMessage(allTiles), msg.who);
@@ -95,7 +101,7 @@ export class InfotainmentPiServer {
                 break;
             case MessageType.playAudioFile:
                 const playMessage = msg.message as PlayAudioFileMessage;
-                if (this.currentSongSub !== null) {
+                if (this.currentSongSub) {
                     this.currentSongTilePlaying = null;
                     this.currentSongSub.unsubscribe(); // a new song is playing, stop giving updates for the old one
                 }
@@ -106,7 +112,7 @@ export class InfotainmentPiServer {
                 });
                 break;
             case MessageType.stopAudioFile:
-                if (this.currentSongSub !== null) {
+                if (this.currentSongSub) {
                     this.currentSongSub.unsubscribe(); // song stopped playing, stop giving updates for the old one
                 }
                 audioManager.stopPlaying().then(() => {
@@ -116,13 +122,21 @@ export class InfotainmentPiServer {
             case MessageType.addUpdateTile:
                 const addUpdate = msg.message as AddUpdateTileMessage;
                 if (addUpdate.tile.id > 0) {
-                    repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) =>
-                        this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "updated")));
+                    repo.setTile(addUpdate.tile.id, addUpdate.tile).then((success) => {
+                        this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "updated"));
+                        repo.getTiles().then((all) => {
+                            allTiles = all;
+                            this.broadcastMessage(new ReturnAllTilesMessage(all));
+                        });
+                    });
                 } else {
                     repo.getNextId().then((nextId) => {
                         addUpdate.tile.id = nextId;
-                        repo.addTile(addUpdate.tile.id, addUpdate.tile).then((success) =>
-                            this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "added")));
+                        repo.setTile(addUpdate.tile.id, addUpdate.tile).then((success) => {
+                            this.broadcastMessage(new TileUpdatedMessage(addUpdate.tile, "added"));
+                            allTiles.push(addUpdate.tile);
+                            this.broadcastMessage(new ReturnAllTilesMessage(allTiles));
+                        });
                     }).catch((reason) => {
                         console.log(reason);
                     });
