@@ -23,6 +23,8 @@
     "typescript": "^2.3.3"
   },
   "dependencies": {
+    "audio-loader": "^1.0.3",
+    "audio-play": "^2.2.0",
     "obd2": "^0.1.2",
     "player": "^0.6.1",
     "redis": "^2.7.1",

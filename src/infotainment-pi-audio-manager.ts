@@ -1,30 +1,26 @@
-//import { Player } from "player";
+import * as load from 'audio-loader';
+import * as play from 'audio-play';
+import { EventEmitter } from 'events';
 
-export class InfotainmentPiAudioManager{
-        
-    constructor() {
-        
-    }
+export class InfotainmentPiAudioManager extends EventEmitter {
 
-    playFile(filePath: string): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            try{
-                //this._client.set(`tile:${tileId}`, JSON.stringify(tile), (err: any, id: any) => { resolve(true) })
-                resolve(true);
-            }catch(ex){
-                reject(ex);
-            }
+    private current: any;
+
+    constructor() { super() }
+
+    public playFile(filePath: string): Promise<number> {
+        return load('./audio/samples/2555.mp3').then((buffer, opts?, cb?) => {
+            this.current = new play(buffer, opts, () => this.stopPlaying())
+            return Promise.resolve(buffer.duration);
         });
     }
 
-    stopPlaying(): Promise<boolean> {
-        return new Promise((resolve, reject) => {
-            try{
-                //this._client.set(`tile:${tileId}`, JSON.stringify(tile), (err: any, id: any) => { resolve(true) })
-                resolve(true);
-            }catch(ex){
-                reject(ex);
-            }
-        });
+    public stopPlaying(): Promise<boolean> {
+        if (this.current) {
+            this.current.pause();
+            this.emit("stopped");
+            return Promise.resolve(true);
+        }
+        return Promise.resolve(false);
     }
 }
